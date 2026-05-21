@@ -190,8 +190,8 @@ curl "http://localhost:8080/caso?n=3"
 ```
 main          ← versión estable, solo merge de ramas aprobadas
 ├── rey/backend     ← scouta_experto_v2.pl + servidor.pl
-├── diego/frontend  ← web/index.html + style.css + app.js
-└── ivan/docs       ← README + documentacion + bayesiana
+├── INTEGRANTE1/frontend  ← web/index.html + style.css + app.js
+└── INTEGRANTE2/docs       ← README + documentacion + bayesiana
 ```
 
 ### Comandos para cada integrante

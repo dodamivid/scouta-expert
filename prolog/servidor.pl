@@ -166,19 +166,19 @@ iniciar_servidor :-
     ( servidor_activo(_) ->
         write('[!] El servidor ya esta corriendo.'), nl
     ;
-        Port = 8080,
+        Port =9090,
         http_server(http_dispatch, [port(Port)]),
         assert(servidor_activo(Port)),
         format('[OK] Servidor Scouta corriendo en http://localhost:~w~n', [Port]),
         write('[OK] Endpoints disponibles:'), nl,
-        write('       GET  http://localhost:8080/sintomas'), nl,
-        write('       POST http://localhost:8080/diagnosticar'), nl,
-        write('       GET  http://localhost:8080/caso?n=1  (casos 1-5)'), nl,
-        write('       GET  http://localhost:8080/          (frontend)'), nl
+        write('       GET  http://localhost:9090/sintomas'), nl,
+        write('       POST http://localhost:9090/diagnosticar'), nl,
+        write('       GET  http://localhost:9090/caso?n=1  (casos 1-5)'), nl,
+        write('       GET  http://localhost:9090/          (frontend)'), nl
     ).
 
 detener_servidor :-
-    http_stop_server(8080, []),
+    http_stop_server(9090, []),
     retractall(servidor_activo(_)),
     write('[OK] Servidor detenido.'), nl.
 
