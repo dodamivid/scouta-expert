@@ -1,0 +1,199 @@
+:root {
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --panel-2: #273449;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --primary: #38bdf8;
+  --primary-dark: #0ea5e9;
+  --accent: #34d399;
+  --danger: #f87171;
+  --border: #334155;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.topbar {
+  text-align: center;
+  padding: 28px 16px 16px;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar h1 { margin: 0; font-size: 2rem; }
+
+.subtitle { margin: 6px 0 0; color: var(--muted); font-size: 0.95rem; }
+
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+}
+
+.panel h2 {
+  margin: 0 0 14px;
+  font-size: 1.15rem;
+  color: var(--primary);
+}
+
+.hint { color: var(--muted); font-size: 0.9rem; margin: 0 0 12px; }
+
+.sintomas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.sintoma-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+
+.sintoma-item:hover { border-color: var(--primary); }
+
+.sintoma-item input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.sintoma-item label {
+  cursor: pointer;
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+
+.acciones {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.casos { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 11px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.08s, filter 0.15s, background 0.15s;
+  color: #0f172a;
+}
+
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary { background: var(--primary); }
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+.btn-caso { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+.btn-caso:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+
+.resultado { min-height: 60px; }
+
+.placeholder { color: var(--muted); font-style: italic; }
+
+.diag-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+
+.diag-card h3 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  color: var(--accent);
+  text-transform: capitalize;
+}
+
+.diag-card .bloque { margin-top: 10px; }
+.diag-card .bloque strong { color: var(--primary); display: block; margin-bottom: 4px; }
+
+.diag-card ul { margin: 4px 0 0; padding-left: 20px; }
+.diag-card li { margin-bottom: 3px; }
+
+.recomendacion {
+  background: rgba(52, 211, 153, 0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 6px;
+}
+
+.mensaje-info, .mensaje-error {
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-weight: 500;
+}
+
+.mensaje-info {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid var(--primary);
+}
+
+.mensaje-error {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.caso-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #0f172a;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.footer {
+  text-align: center;
+  padding: 18px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border);
+}
+
+.footer code { color: var(--primary); }
