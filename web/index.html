@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scouta Expert — Diagnóstico</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>🤖 Scouta Expert</h1>
+    <p class="subtitle">Sistema experto de diagnóstico de fallas — robot de sumo autónomo</p>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <h2>1. Selecciona los síntomas observados</h2>
+      <div id="estado-sintomas" class="hint">Cargando síntomas…</div>
+      <div id="sintomas" class="sintomas-grid"></div>
+
+      <div class="acciones">
+        <button id="btn-diagnosticar" class="btn btn-primary">🔍 Diagnosticar</button>
+        <button id="btn-limpiar" class="btn btn-secondary">🧹 Limpiar</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>2. O prueba un caso predefinido</h2>
+      <p class="hint">Cada botón carga un conjunto de síntomas de ejemplo y muestra su diagnóstico.</p>
+      <div class="casos">
+        <button class="btn btn-caso" data-caso="1">Caso 1</button>
+        <button class="btn btn-caso" data-caso="2">Caso 2</button>
+        <button class="btn btn-caso" data-caso="3">Caso 3</button>
+        <button class="btn btn-caso" data-caso="4">Caso 4</button>
+        <button class="btn btn-caso" data-caso="5">Caso 5</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Resultado</h2>
+      <div id="resultado" class="resultado">
+        <p class="placeholder">Aún no hay diagnóstico. Selecciona síntomas y presiona <strong>Diagnosticar</strong>, o elige un caso de prueba.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>NexCode Solutions · SWI-Prolog + Web · API <code>http://localhost:9090</code></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
