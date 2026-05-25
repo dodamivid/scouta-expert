@@ -1,75 +1,124 @@
 % ============================================================
 %  Sistema Experto — Diagnóstico de fallas: Robot Scouta
-%  Proyecto Final — Programación Lógica y Funcional
-%  Equipo  : NexCode Solutions
 %  Hardware: Arduino Nano | TB6612FNG | 2x N20 | 2x 18650 7.4V
 %            3x VL53L0X | 2x TCR5000
+%
+%  Descripción:
+%    Motor de inferencia hacia adelante basado en reglas.
+%    Dado un conjunto de síntomas observados (assert(sintoma/1)),
+%    identifica el diagnóstico, explica el razonamiento y
+%    entrega una recomendación de acción correctiva.
+%
+%  Módulos:
+%    1. Base de hechos         — hecho/1, hecho/3
+%    2. Base de conocimiento   — diagnostico/1  (17 reglas)
+%    3. Explicación            — por_que/1
+%    4. Recomendaciones        — recomendacion/2
+%    5. Motor de inferencia    — diagnosticar/0, diagnosticar_con_fallback/0
+%    6. Consulta interactiva   — iniciar/0, ingresar_sintomas/0
+%    7. Casos de prueba        — caso/1, todos_los_casos/0
+%    8. API JSON               — diagnosticar_json/2
+%
+%  Uso rápido:
+%    ?- consult('scouta_experto_v2.pl').
+%    ?- iniciar.
+%    ?- assert(sintoma(vl53_lectura_erratica)), diagnosticar.
+%    ?- todos_los_casos.
+%    ?- caso(3).
 % ============================================================
 
+% Síntomas se registran dinámicamente con assert/retract
 :- dynamic sintoma/1.
+% caso_activo/1 reservado para uso futuro (trazabilidad)
 :- dynamic caso_activo/1.
 
 % ============================================================
-%  BASE DE HECHOS (20 hechos del dominio)
+%  BASE DE HECHOS
+%  20 hechos del dominio divididos en:
+%    a) Síntomas observables — hecho/1 (átomos que el usuario reporta)
+%    b) Constantes del hardware — hecho/3 (nombre, clave, valor)
 % ============================================================
 
 % -- Síntomas observables --
-hecho(motores_sin_respuesta).
-hecho(solo_motor_izquierdo).
-hecho(solo_motor_derecho).
-hecho(movimiento_debil).
-hecho(calor_excesivo_driver).
-hecho(vl53_sin_lectura).
-hecho(vl53_lectura_erratica).
-hecho(tcr5000_siempre_activo).
-hecho(tcr5000_nunca_activo).
-hecho(robot_no_avanza_estrategia).
-hecho(voltaje_bajo).
-hecho(arduino_no_inicia).
-hecho(robot_gira_sin_parar).
-hecho(robot_no_esquiva_borde).
-hecho(velocidad_asimetrica).
+% Cada átomo representa una condición que el usuario puede percibir
+% directamente en el robot durante o después de una prueba/combate.
+hecho(motores_sin_respuesta).       % Ningún motor gira al dar comando
+hecho(solo_motor_izquierdo).        % Solo el motor izquierdo responde
+hecho(solo_motor_derecho).          % Solo el motor derecho responde
+hecho(movimiento_debil).            % Motores giran pero sin fuerza/torque
+hecho(calor_excesivo_driver).       % El TB6612FNG está muy caliente al tacto
+hecho(vl53_sin_lectura).            % Los VL53L0X no devuelven ningún dato
+hecho(vl53_lectura_erratica).       % Los VL53L0X devuelven datos inconsistentes
+hecho(tcr5000_siempre_activo).      % Los TCR5000 reportan línea aunque no haya
+hecho(tcr5000_nunca_activo).        % Los TCR5000 nunca detectan la línea negra
+hecho(robot_no_avanza_estrategia).  % El robot no ejecuta el modo de ataque
+hecho(voltaje_bajo).                % Voltaje de la batería por debajo del nominal
+hecho(arduino_no_inicia).           % El Arduino Nano no enciende / no ejecuta código
+hecho(robot_gira_sin_parar).        % El robot entra en giro continuo sin detenerse
+hecho(robot_no_esquiva_borde).      % El robot no reacciona al borde del dohyo
+hecho(velocidad_asimetrica).        % Un motor gira más rápido que el otro
 
-% -- Hechos estáticos del dominio (conocimiento sobre el hardware) --
-hecho(voltaje_nominal_bateria_18650_serie, 7.4).
-hecho(voltaje_minimo_motores_n20, 6.0).
-hecho(voltaje_minimo_arduino_nano, 4.5).
-hecho(direccion_i2c_vl53l0x, 0x29).
-hecho(sensores_vl53_cantidad, 3).
+% -- Hechos estáticos del dominio (constantes de hardware) --
+% Formato: hecho(nombre, clave, valor_numerico_o_atomo)
+hecho(voltaje_nominal_bateria_18650_serie, voltaje, 7.4).   % 2x 18650 en serie
+hecho(voltaje_minimo_motores_n20,          voltaje, 6.0).   % Mínimo para torque
+hecho(voltaje_minimo_arduino_nano,         voltaje, 4.5).   % Mínimo para arranque
+hecho(direccion_i2c_vl53l0x,              direccion, 0x29). % Dir. I2C por defecto
+hecho(sensores_vl53_cantidad,             cantidad, 3).     % Total de sensores ToF
 
 % ============================================================
-%  BASE DE CONOCIMIENTO (15 reglas de diagnóstico)
+%  BASE DE CONOCIMIENTO — 17 reglas de diagnóstico
+%
+%  Estructura general de cada regla:
+%    diagnostico(Nombre) :-
+%        sintoma(S1),          % condición necesaria presente
+%        \+ sintoma(S2).       % condición que descarta otras causas
+%
+%  Las negaciones (\+) se usan para distinguir diagnósticos que
+%  comparten síntomas pero tienen causas distintas.
 % ============================================================
 
 % --- SUBSISTEMA 1: Driver TB6612FNG y motores N20 ---
 
 % Regla 1
+% Cuando ambos motores fallan Y hay voltaje bajo → el driver entró
+% en modo de protección por VM insuficiente (< 6V).
 diagnostico(falla_driver_tb6612fng) :-
     sintoma(motores_sin_respuesta),
     sintoma(voltaje_bajo).
 
 % Regla 2
+% Solo el motor derecho funciona Y voltaje normal → el canal izquierdo
+% del TB6612FNG recibe la señal pero el motor no la ejecuta.
 diagnostico(conexion_motor_izquierdo_suelta) :-
     sintoma(solo_motor_derecho),
     \+ sintoma(voltaje_bajo).
 
 % Regla 3
+% Solo el motor izquierdo funciona Y voltaje normal → análogo a regla 2
+% pero para el canal derecho del driver.
 diagnostico(conexion_motor_derecho_suelta) :-
     sintoma(solo_motor_izquierdo),
     \+ sintoma(voltaje_bajo).
 
 % Regla 4
+% Movimiento débil SIN voltaje bajo NI asimetría → los motores reciben
+% alimentación correcta pero el PWM configurado es insuficiente.
 diagnostico(pwm_insuficiente) :-
     sintoma(movimiento_debil),
     \+ sintoma(voltaje_bajo),
     \+ sintoma(velocidad_asimetrica).
 
 % Regla 5
+% Driver caliente Y motores sin respuesta → protección térmica activa.
+% El TB6612FNG corta la salida cuando supera ~85°C.
 diagnostico(sobrecalentamiento_driver) :-
     sintoma(calor_excesivo_driver),
     sintoma(motores_sin_respuesta).
 
-% Regla 6 — nueva
+% Regla 6
+% Velocidad asimétrica SIN conexiones sueltas conocidas → los valores
+% de PWM para el canal A y canal B del driver son distintos en el código.
 diagnostico(desequilibrio_pwm_entre_motores) :-
     sintoma(velocidad_asimetrica),
     \+ sintoma(conexion_motor_izquierdo_suelta),
@@ -78,20 +127,28 @@ diagnostico(desequilibrio_pwm_entre_motores) :-
 % --- SUBSISTEMA 2: Sensores de distancia VL53L0X ---
 
 % Regla 7
+% Los 3 VL53L0X no responden Y voltaje normal → el bus I2C está caído.
+% Causa típica: falta de resistencias pull-up en SDA/SCL.
 diagnostico(falla_bus_i2c) :-
     sintoma(vl53_sin_lectura),
     \+ sintoma(voltaje_bajo).
 
 % Regla 8
+% Lecturas erráticas de los VL53L0X → todos tienen la dirección 0x29
+% por defecto; si no se inicializan secuencialmente por XSHUT, colisionan.
 diagnostico(conflicto_direccion_i2c) :-
     sintoma(vl53_lectura_erratica).
 
 % Regla 9
+% Sin lectura de VL53L0X CON voltaje bajo → el regulador 3V3 del Nano
+% no puede alimentar los 3 sensores con la batería descargada.
 diagnostico(falla_alimentacion_sensores_vl53) :-
     sintoma(vl53_sin_lectura),
     sintoma(voltaje_bajo).
 
-% Regla 10 — nueva
+% Regla 10
+% Robot no ataca + lecturas erráticas + motores OK → los sensores
+% devuelven datos pero el umbral de distancia en el código es incorrecto.
 diagnostico(umbral_vl53_mal_configurado) :-
     sintoma(robot_no_avanza_estrategia),
     sintoma(vl53_lectura_erratica),
@@ -100,14 +157,21 @@ diagnostico(umbral_vl53_mal_configurado) :-
 % --- SUBSISTEMA 3: Sensores de borde TCR5000 ---
 
 % Regla 11
+% TCR5000 siempre activo → el pin OUT queda en LOW permanente.
+% Causa: lente obstruido, cortocircuito o emisor IR bloqueado.
 diagnostico(tcr5000_obstruido_o_corto) :-
     sintoma(tcr5000_siempre_activo).
 
 % Regla 12
+% TCR5000 nunca activo → pin OUT queda en HIGH permanente.
+% Causa: sensor desconectado, quemado o resistencia incorrecta.
 diagnostico(tcr5000_desconectado_o_quemado) :-
     sintoma(tcr5000_nunca_activo).
 
-% Regla 13 — nueva: consecuencia de borde no detectado
+% Regla 13
+% No esquiva el borde PERO los TCR5000 no están en corto → el sensor
+% detecta físicamente pero el umbral de lectura en el código es erróneo,
+% o la orientación del sensor no apunta al suelo.
 diagnostico(riesgo_salida_del_dohyo) :-
     sintoma(robot_no_esquiva_borde),
     \+ sintoma(tcr5000_siempre_activo).
@@ -115,11 +179,15 @@ diagnostico(riesgo_salida_del_dohyo) :-
 % --- SUBSISTEMA 4: Alimentación (baterías 18650) ---
 
 % Regla 14
+% Voltaje bajo + Arduino no inicia → las 2x 18650 están por debajo de
+% ~4.5V; el regulador interno del Nano no puede arrancar el microcontrolador.
 diagnostico(bateria_descargada) :-
     sintoma(voltaje_bajo),
     sintoma(arduino_no_inicia).
 
-% Regla 15 — nueva: batería baja sin que el Arduino se apague
+% Regla 15
+% Voltaje bajo + movimiento débil + Arduino sigue encendido → el Nano
+% funciona (≥4.5V) pero los N20 pierden torque por debajo de 6V.
 diagnostico(voltaje_insuficiente_motores) :-
     sintoma(voltaje_bajo),
     sintoma(movimiento_debil),
@@ -128,13 +196,17 @@ diagnostico(voltaje_insuficiente_motores) :-
 % --- SUBSISTEMA 5: Lógica y estrategia ---
 
 % Regla 16
+% Robot no ataca + motores OK + sensores OK → los sensores y actuadores
+% funcionan, pero la lógica de decisión del Arduino no activa el ataque.
 diagnostico(logica_ataque_incorrecta) :-
     sintoma(robot_no_avanza_estrategia),
     \+ sintoma(motores_sin_respuesta),
     \+ sintoma(vl53_sin_lectura),
     \+ sintoma(vl53_lectura_erratica).
 
-% Regla 17 — nueva
+% Regla 17
+% Gira sin parar SIN TCR5000 en corto NI lecturas VL53 erráticas →
+% la condición de salida del estado de búsqueda nunca se cumple en código.
 diagnostico(logica_giro_incorrecta) :-
     sintoma(robot_gira_sin_parar),
     \+ sintoma(tcr5000_siempre_activo),
@@ -142,7 +214,11 @@ diagnostico(logica_giro_incorrecta) :-
 
 % ============================================================
 %  MÓDULO DE EXPLICACIÓN — por_que/1
-%  Explica al usuario la cadena de razonamiento
+%
+%  Dado un diagnóstico, imprime la cadena de razonamiento que
+%  llevó a esa conclusión. Usa write/nl para salida estándar.
+%  El servidor.pl captura esta salida con with_output_to/2
+%  para convertirla en JSON.
 % ============================================================
 
 por_que(falla_driver_tb6612fng) :-
@@ -228,13 +304,17 @@ por_que(logica_giro_incorrecta) :-
     write('  Conclusion: la condicion de busqueda (giro continuo) nunca se interrumpe en el codigo;'), nl,
     write('  revisar las condiciones de salida del estado de busqueda.'), nl.
 
-% Fallback: si no hay explicación definida
+% Cláusula fallback: diagnóstico sin explicación definida
 por_que(D) :-
     write('  [Sin explicacion detallada disponible para: '),
     write(D), write(']'), nl.
 
 % ============================================================
-%  RECOMENDACIONES
+%  RECOMENDACIONES — recomendacion/2
+%
+%  Formato: recomendacion(Diagnostico, TextoAccion)
+%  Cada texto describe la acción física o de código a tomar.
+%  El servidor.pl incluye este texto en la respuesta JSON.
 % ============================================================
 
 recomendacion(falla_driver_tb6612fng,
@@ -273,7 +353,13 @@ recomendacion(logica_giro_incorrecta,
     'Revisa la condicion de salida del estado de busqueda en el codigo. Verifica los timeouts de giro.').
 
 % ============================================================
-%  MOTOR DE INFERENCIA CON EXPLICACIONES
+%  MOTOR DE INFERENCIA — diagnosticar/0
+%
+%  Itera sobre todos los diagnósticos posibles usando fail/0
+%  para forzar el backtracking y encontrar todos los que aplican.
+%  Por cada coincidencia imprime: diagnóstico + explicación + acción.
+%
+%  Prerrequisito: al menos un sintoma/1 debe estar en la base dinámica.
 % ============================================================
 
 diagnosticar :-
@@ -281,6 +367,7 @@ diagnosticar :-
     write('  Sistema Experto — Robot Scouta v2'), nl,
     write('========================================'), nl, nl,
     ( \+ sintoma(_) ->
+        % Guarda de seguridad: no hay síntomas registrados
         write('[!] No hay sintomas registrados. Usa: assert(sintoma(X)).'), nl
     ;
         ( diagnostico(D),
@@ -290,12 +377,16 @@ diagnosticar :-
           por_que(D),
           write('   ACCION      : '), write(R), nl,
           write('----------------------------------------'), nl,
-          fail
-        ; true )
+          fail          % Backtracking forzado para encontrar todos los diagnósticos
+        ; true )        % Éxito al agotar todas las alternativas
     ).
 
 % ============================================================
-%  FALLBACK — cuando ninguna regla aplica
+%  FALLBACK — diagnosticar_con_fallback/0
+%
+%  Wrapper de diagnosticar/0 que maneja el caso en que ninguna
+%  regla aplica para los síntomas ingresados.
+%  Usado por el servidor HTTP para responder correctamente.
 % ============================================================
 
 diagnosticar_con_fallback :-
@@ -306,6 +397,7 @@ diagnosticar_con_fallback :-
         write('[!] No se registraron sintomas.'), nl
     ;
         ( \+ diagnostico(_) ->
+            % Ninguna regla coincide con los síntomas dados
             write('[!] No se encontro ningun diagnostico para los sintomas ingresados.'), nl,
             write('    Posibles causas:'), nl,
             write('    - Combinacion de sintomas no contemplada en la base de conocimiento.'), nl,
@@ -317,11 +409,19 @@ diagnosticar_con_fallback :-
     ).
 
 % ============================================================
-%  CONSULTA INTERACTIVA
+%  CONSULTA INTERACTIVA — iniciar/0
+%
+%  Interfaz de línea de comandos para usar el sistema sin el
+%  servidor HTTP. Lee síntomas uno por uno hasta recibir "listo."
+%  y luego ejecuta el motor de inferencia.
+%
+%  Flujo:
+%    iniciar → retractall(sintoma) → ingresar_sintomas (loop)
+%            → diagnosticar_con_fallback
 % ============================================================
 
 iniciar :-
-    retractall(sintoma(_)),
+    retractall(sintoma(_)),   % Limpia cualquier sesión anterior
     write('========================================='), nl,
     write('  Diagnostico interactivo — Robot Scouta '), nl,
     write('========================================='), nl,
@@ -339,19 +439,31 @@ iniciar :-
     nl,
     diagnosticar_con_fallback.
 
+% Lee síntomas en un loop recursivo hasta que el usuario escribe "listo."
+% Cada síntoma válido se agrega a la base dinámica con assert.
 ingresar_sintomas :-
     write('Sintoma: '),
     read(X),
-    ( X == listo -> true
+    ( X == listo -> true       % Condición de salida del loop
     ; assert(sintoma(X)),
       write('  [OK] Sintoma registrado: '), write(X), nl,
-      ingresar_sintomas
+      ingresar_sintomas         % Llamada recursiva para el siguiente síntoma
     ).
 
 % ============================================================
-%  CASOS DE PRUEBA — 5 casos distintos del dominio
+%  CASOS DE PRUEBA — caso/1
+%
+%  5 escenarios representativos del dominio. Cada caso registra
+%  un conjunto de síntomas y ejecuta el motor de inferencia.
+%  Diseñados para cubrir los 5 subsistemas del robot.
+%
+%  Se usan para validar que las reglas funcionan correctamente
+%  y también como demo en la interfaz web.
 % ============================================================
 
+% Caso 1: Batería descargada en combate
+%   Síntomas: voltaje_bajo + arduino_no_inicia
+%   Diagnóstico esperado: bateria_descargada
 caso(1) :-
     write('=== CASO 1: Bateria descargada en combate ==='), nl,
     retractall(sintoma(_)),
@@ -359,6 +471,9 @@ caso(1) :-
     assert(sintoma(arduino_no_inicia)),
     diagnosticar_con_fallback.
 
+% Caso 2: Conflicto I2C en los VL53L0X
+%   Síntomas: vl53_lectura_erratica + robot_no_avanza_estrategia
+%   Diagnósticos esperados: conflicto_direccion_i2c, umbral_vl53_mal_configurado
 caso(2) :-
     write('=== CASO 2: Conflicto I2C en los VL53L0X ==='), nl,
     retractall(sintoma(_)),
@@ -366,6 +481,9 @@ caso(2) :-
     assert(sintoma(robot_no_avanza_estrategia)),
     diagnosticar_con_fallback.
 
+% Caso 3: TCR5000 nunca detecta el borde
+%   Síntomas: tcr5000_nunca_activo + robot_no_esquiva_borde
+%   Diagnósticos esperados: tcr5000_desconectado_o_quemado, riesgo_salida_del_dohyo
 caso(3) :-
     write('=== CASO 3: TCR5000 nunca detecta el borde ==='), nl,
     retractall(sintoma(_)),
@@ -373,12 +491,18 @@ caso(3) :-
     assert(sintoma(robot_no_esquiva_borde)),
     diagnosticar_con_fallback.
 
+% Caso 4: Solo gira el motor derecho
+%   Síntomas: solo_motor_derecho
+%   Diagnóstico esperado: conexion_motor_izquierdo_suelta
 caso(4) :-
     write('=== CASO 4: Solo gira el motor derecho ==='), nl,
     retractall(sintoma(_)),
     assert(sintoma(solo_motor_derecho)),
     diagnosticar_con_fallback.
 
+% Caso 5: Robot busca rival pero nunca ataca
+%   Síntomas: robot_gira_sin_parar + robot_no_avanza_estrategia
+%   Diagnóstico esperado: logica_giro_incorrecta
 caso(5) :-
     write('=== CASO 5: Robot busca rival pero nunca ataca ==='), nl,
     retractall(sintoma(_)),
@@ -386,17 +510,27 @@ caso(5) :-
     assert(sintoma(robot_no_avanza_estrategia)),
     diagnosticar_con_fallback.
 
+% Ejecuta los 5 casos en secuencia con una línea en blanco entre cada uno
 todos_los_casos :-
     caso(1), nl, caso(2), nl, caso(3), nl, caso(4), nl, caso(5).
 
 % ============================================================
-%  API JSON — para conectar con la interfaz web
-%  Recibe lista de sintomas, devuelve diagnosticos como JSON
+%  API JSON — diagnosticar_json/2
+%
+%  Interfaz para integraciones externas (usada internamente por
+%  servidor.pl antes de migrar a findall directo con JSON dicts).
+%
+%  @param Sintomas  Lista de átomos: [voltaje_bajo, arduino_no_inicia]
+%  @param JSON      Dict de salida:
+%                   json{status: "ok"|"sin_diagnostico", resultados: [...]}
+%
+%  Nota: el servidor HTTP actual usa su propio findall en handle_diagnosticar/1.
+%  Este predicado se mantiene para compatibilidad y pruebas desde la consola.
 % ============================================================
 
 diagnosticar_json(Sintomas, JSON) :-
     retractall(sintoma(_)),
-    maplist([S]>>(assert(sintoma(S))), Sintomas),
+    maplist([S]>>(assert(sintoma(S))), Sintomas),  % Registra todos los síntomas
     findall(
         diagnostico{id: D, recomendacion: R},
         ( diagnostico(D), recomendacion(D, R) ),
@@ -407,20 +541,3 @@ diagnosticar_json(Sintomas, JSON) :-
     ;
         JSON = json{status: "ok", resultados: Resultados}
     ).
-
-% ============================================================
-%  USO RÁPIDO
-% ============================================================
-%
-%  ?- consult('scouta_experto_v2.pl').
-%
-%  Interactivo:
-%  ?- iniciar.
-%
-%  Directo:
-%  ?- assert(sintoma(vl53_lectura_erratica)), diagnosticar.
-%
-%  Casos de prueba:
-%  ?- todos_los_casos.
-%  ?- caso(3).
-%
