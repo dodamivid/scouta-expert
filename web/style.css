@@ -1,17 +1,55 @@
+/*
+  ============================================================
+  Scouta Expert — Hoja de Estilos
+
+  Autor     : Carlos Alvarado (Integrante 2)
+  Proyecto  : Sistema Experto de Diagnóstico — Robot Scouta
+  Equipo    : NexCode Solutions
+
+  Descripción:
+    Estilos visuales del frontend. Usa un tema oscuro (#0f172a)
+    con acentos en azul cyan (#38bdf8) y verde esmeralda (#34d399).
+
+  Sistema de diseño:
+    - Variables CSS en :root para colores y radios
+    - Layout en flexbox (columna) + CSS Grid para los checkboxes
+    - Responsive: los grids se adaptan con auto-fill / minmax
+    - Transiciones suaves en hover y estados activos
+
+  Componentes principales:
+    .topbar          → barra superior fija con título
+    .panel           → tarjeta de sección con borde y fondo
+    .sintomas-grid   → grid de checkboxes (auto-fill 240px)
+    .sintoma-item    → tarjeta individual de síntoma
+    .btn             → base de botones (primary / secondary / caso)
+    .diag-card       → tarjeta de resultado del diagnóstico
+    .mensaje-info    → aviso informativo (borde azul)
+    .mensaje-error   → aviso de error (borde rojo)
+    .caso-badge      → etiqueta verde para identificar caso de prueba
+    .footer          → pie de página con créditos
+  ============================================================
+*/
+
+/* ------------------------------------------------------------
+   VARIABLES GLOBALES — Paleta de colores y tokens de diseño
+   ------------------------------------------------------------ */
 :root {
-  --bg: #0f172a;
-  --panel: #1e293b;
-  --panel-2: #273449;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --primary: #38bdf8;
-  --primary-dark: #0ea5e9;
-  --accent: #34d399;
-  --danger: #f87171;
-  --border: #334155;
-  --radius: 12px;
+  --bg:           #0f172a;   /* Fondo general de la página */
+  --panel:        #1e293b;   /* Fondo de tarjetas/paneles */
+  --panel-2:      #273449;   /* Fondo secundario (checkboxes, recomendaciones) */
+  --text:         #e2e8f0;   /* Texto principal */
+  --muted:        #94a3b8;   /* Texto secundario / placeholders */
+  --primary:      #38bdf8;   /* Color de acento primario (azul cyan) */
+  --primary-dark: #0ea5e9;   /* Hover del acento primario */
+  --accent:       #34d399;   /* Color de acento secundario (verde) */
+  --danger:       #f87171;   /* Color de error / advertencia */
+  --border:       #334155;   /* Color de bordes */
+  --radius:       12px;      /* Radio de borde estándar */
 }
 
+/* ------------------------------------------------------------
+   RESET BÁSICO
+   ------------------------------------------------------------ */
 * { box-sizing: border-box; }
 
 body {
@@ -22,6 +60,10 @@ body {
   line-height: 1.5;
 }
 
+/* ------------------------------------------------------------
+   BARRA SUPERIOR
+   Contiene el título del sistema y el subtítulo descriptivo.
+   ------------------------------------------------------------ */
 .topbar {
   text-align: center;
   padding: 28px 16px 16px;
@@ -33,6 +75,10 @@ body {
 
 .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 0.95rem; }
 
+/* ------------------------------------------------------------
+   CONTENEDOR PRINCIPAL
+   Centra el contenido a 880px máximo, con gap entre paneles.
+   ------------------------------------------------------------ */
 .container {
   max-width: 880px;
   margin: 0 auto;
@@ -42,6 +88,10 @@ body {
   gap: 20px;
 }
 
+/* ------------------------------------------------------------
+   PANELES DE SECCIÓN
+   Cada <section class="panel"> es una tarjeta visual.
+   ------------------------------------------------------------ */
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -52,17 +102,24 @@ body {
 .panel h2 {
   margin: 0 0 14px;
   font-size: 1.15rem;
-  color: var(--primary);
+  color: var(--primary);   /* Título de panel en azul cyan */
 }
 
+/* Texto de ayuda / descripción dentro de los paneles */
 .hint { color: var(--muted); font-size: 0.9rem; margin: 0 0 12px; }
 
+/* ------------------------------------------------------------
+   GRID DE SÍNTOMAS
+   Los checkboxes se distribuyen en columnas de mínimo 240px.
+   Se adapta automáticamente al ancho disponible.
+   ------------------------------------------------------------ */
 .sintomas-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 10px;
 }
 
+/* Tarjeta individual de un síntoma (checkbox + label) */
 .sintoma-item {
   display: flex;
   align-items: center;
@@ -76,12 +133,13 @@ body {
   user-select: none;
 }
 
+/* Resalta el borde al pasar el mouse */
 .sintoma-item:hover { border-color: var(--primary); }
 
 .sintoma-item input {
   width: 18px;
   height: 18px;
-  accent-color: var(--primary);
+  accent-color: var(--primary);   /* Color del checkbox al marcarse */
   cursor: pointer;
 }
 
@@ -91,6 +149,10 @@ body {
   word-break: break-word;
 }
 
+/* ------------------------------------------------------------
+   BOTONES DE ACCIÓN
+   Contenedor flex para "Diagnosticar" y "Limpiar".
+   ------------------------------------------------------------ */
 .acciones {
   display: flex;
   gap: 12px;
@@ -98,8 +160,12 @@ body {
   flex-wrap: wrap;
 }
 
+/* Contenedor de los botones de casos de prueba */
 .casos { display: flex; gap: 10px; flex-wrap: wrap; }
 
+/* ------------------------------------------------------------
+   BOTONES — Estilos base y variantes
+   ------------------------------------------------------------ */
 .btn {
   border: none;
   border-radius: 10px;
@@ -108,15 +174,20 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.08s, filter 0.15s, background 0.15s;
-  color: #0f172a;
+  color: #0f172a;   /* Texto oscuro sobre fondo claro */
 }
 
+/* Efecto de pulsación al hacer click */
 .btn:active { transform: translateY(1px); }
+
+/* Estado deshabilitado durante la carga */
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Botón primario: "Diagnosticar" (azul cyan) */
 .btn-primary { background: var(--primary); }
 .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
 
+/* Botón secundario: "Limpiar" (transparente con borde) */
 .btn-secondary {
   background: transparent;
   color: var(--text);
@@ -124,22 +195,34 @@ body {
 }
 .btn-secondary:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
 
+/* Botones de casos de prueba (fondo oscuro neutro) */
 .btn-caso { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
 .btn-caso:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 
+/* ------------------------------------------------------------
+   PANEL DE RESULTADO
+   Contenedor del diagnóstico generado por renderResultado().
+   ------------------------------------------------------------ */
 .resultado { min-height: 60px; }
 
+/* Texto inicial antes del primer diagnóstico */
 .placeholder { color: var(--muted); font-style: italic; }
 
+/* ------------------------------------------------------------
+   TARJETA DE DIAGNÓSTICO (.diag-card)
+   Cada diagnóstico devuelto por el servidor genera una tarjeta.
+   Borde izquierdo verde para identificación visual rápida.
+   ------------------------------------------------------------ */
 .diag-card {
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
+  border-left: 4px solid var(--accent);   /* Acento verde lateral */
   border-radius: 10px;
   padding: 16px 18px;
   margin-bottom: 14px;
 }
 
+/* Título del diagnóstico en verde */
 .diag-card h3 {
   margin: 0 0 10px;
   font-size: 1.1rem;
@@ -147,12 +230,14 @@ body {
   text-transform: capitalize;
 }
 
+/* Bloque interno: "¿Por qué?" y "Recomendación" */
 .diag-card .bloque { margin-top: 10px; }
 .diag-card .bloque strong { color: var(--primary); display: block; margin-bottom: 4px; }
 
 .diag-card ul { margin: 4px 0 0; padding-left: 20px; }
 .diag-card li { margin-bottom: 3px; }
 
+/* Caja de recomendación con fondo verde semitransparente */
 .recomendacion {
   background: rgba(52, 211, 153, 0.08);
   border-radius: 8px;
@@ -160,23 +245,34 @@ body {
   margin-top: 6px;
 }
 
+/* ------------------------------------------------------------
+   MENSAJES DE ESTADO
+   Usados para mostrar avisos informativos y errores.
+   ------------------------------------------------------------ */
 .mensaje-info, .mensaje-error {
   border-radius: 10px;
   padding: 14px 16px;
   font-weight: 500;
 }
 
+/* Aviso informativo: cargando, sin síntomas, sin diagnóstico */
 .mensaje-info {
   background: rgba(56, 189, 248, 0.1);
   border: 1px solid var(--primary);
 }
 
+/* Aviso de error: servidor no disponible, fallo de red */
 .mensaje-error {
   background: rgba(248, 113, 113, 0.1);
   border: 1px solid var(--danger);
   color: var(--danger);
 }
 
+/* ------------------------------------------------------------
+   BADGE DE CASO DE PRUEBA
+   Etiqueta verde que aparece sobre los resultados cuando se
+   ejecuta un caso predefinido (GET /caso?n=N).
+   ------------------------------------------------------------ */
 .caso-badge {
   display: inline-block;
   background: var(--accent);
@@ -184,10 +280,14 @@ body {
   font-size: 0.75rem;
   font-weight: 700;
   padding: 2px 10px;
-  border-radius: 999px;
+  border-radius: 999px;   /* Forma de píldora */
   margin-bottom: 12px;
 }
 
+/* ------------------------------------------------------------
+   PIE DE PÁGINA
+   Créditos del equipo y URL del servidor Prolog.
+   ------------------------------------------------------------ */
 .footer {
   text-align: center;
   padding: 18px;
