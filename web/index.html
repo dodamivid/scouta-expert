@@ -1,4 +1,35 @@
 <!DOCTYPE html>
+<!--
+  ============================================================
+  Scouta Expert — Interfaz Web
+
+  Autor     : Carlos Alvarado (Integrante 2)
+  Proyecto  : Sistema Experto de Diagnóstico — Robot Scouta
+  Materia   : Programación Lógica y Funcional
+  Equipo    : NexCode Solutions
+
+  Descripción:
+    Página principal del sistema experto. Permite al usuario:
+      1. Seleccionar síntomas observados en el robot mediante
+         checkboxes generados dinámicamente desde el servidor.
+      2. Enviar los síntomas al motor de inferencia Prolog y
+         recibir diagnósticos con explicación y recomendación.
+      3. Ejecutar casos de prueba predefinidos (1-5).
+
+  Dependencias:
+    - style.css : estilos visuales (tema oscuro NexCode)
+    - app.js    : lógica de comunicación con la API Prolog
+    - servidor.pl (Prolog, puerto 9090) : backend del sistema
+
+  Estructura del DOM:
+    <header>      → barra superior con título del sistema
+    <main>
+      #panel-1    → checkboxes de síntomas + botones de acción
+      #panel-2    → botones de casos de prueba predefinidos
+      #panel-3    → área de resultados del diagnóstico
+    <footer>      → créditos y URL del servidor
+  ============================================================
+-->
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -7,23 +38,52 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+  <!-- Barra superior: título y subtítulo del sistema -->
   <header class="topbar">
     <h1>Scouta Expert</h1>
     <p class="subtitle">Sistema experto de diagnóstico de fallas — robot de sumo autónomo</p>
   </header>
 
   <main class="container">
+
+    <!-- --------------------------------------------------------
+         Panel 1: Selección de síntomas
+         Los checkboxes se generan dinámicamente en app.js al
+         consultar GET /sintomas. El div #sintomas actúa como
+         contenedor del grid de checkboxes.
+    --------------------------------------------------------- -->
     <section class="panel">
       <h2>1. Selecciona los síntomas observados</h2>
+
+      <!-- Mensaje de estado: "Cargando…" / "N síntomas disponibles" -->
       <div id="estado-sintomas" class="hint">Cargando síntomas…</div>
+
+      <!-- Grid de checkboxes generado por app.js (cargarSintomas()) -->
       <div id="sintomas" class="sintomas-grid"></div>
 
+      <!-- Acciones principales -->
       <div class="acciones">
+        <!-- Envía los síntomas marcados al servidor (POST /diagnosticar) -->
         <button id="btn-diagnosticar" class="btn btn-primary">🔍 Diagnosticar</button>
+
+        <!-- Desmarca todos los checkboxes y limpia el panel de resultado -->
         <button id="btn-limpiar" class="btn btn-secondary">🧹 Limpiar</button>
       </div>
     </section>
 
+    <!-- --------------------------------------------------------
+         Panel 2: Casos de prueba predefinidos
+         Cada botón llama a ejecutarCaso(N) en app.js, que hace
+         GET /caso?n=N al servidor. Los casos están definidos en
+         servidor.pl (sintomas_caso/2).
+
+         Caso 1: voltaje_bajo + arduino_no_inicia
+         Caso 2: vl53_lectura_erratica + robot_no_avanza_estrategia
+         Caso 3: tcr5000_nunca_activo + robot_no_esquiva_borde
+         Caso 4: solo_motor_derecho
+         Caso 5: robot_gira_sin_parar + robot_no_avanza_estrategia
+    --------------------------------------------------------- -->
     <section class="panel">
       <h2>2. O prueba un caso predefinido</h2>
       <p class="hint">Cada botón carga un conjunto de síntomas de ejemplo y muestra su diagnóstico.</p>
@@ -36,18 +96,32 @@
       </div>
     </section>
 
+    <!-- --------------------------------------------------------
+         Panel 3: Resultado del diagnóstico
+         El contenido es reemplazado dinámicamente por app.js
+         (renderResultado()). Puede mostrar:
+           - Placeholder inicial
+           - Spinner de carga ("Diagnosticando…")
+           - Tarjetas .diag-card con diagnóstico + explicación
+           - Mensaje de error si el servidor no responde
+    --------------------------------------------------------- -->
     <section class="panel">
       <h2>Resultado</h2>
       <div id="resultado" class="resultado">
+        <!-- Placeholder inicial; app.js lo reemplaza al recibir respuesta -->
         <p class="placeholder">Aún no hay diagnóstico. Selecciona síntomas y presiona <strong>Diagnosticar</strong>, o elige un caso de prueba.</p>
       </div>
     </section>
+
   </main>
 
+  <!-- Pie de página: créditos del equipo y URL de la API -->
   <footer class="footer">
     <span>NexCode Solutions · SWI-Prolog + Web · API <code>http://localhost:9090</code></span>
   </footer>
 
+  <!-- app.js se carga al final del body para garantizar que el DOM
+       esté disponible antes de ejecutar cargarSintomas() -->
   <script src="app.js"></script>
 </body>
 </html>
